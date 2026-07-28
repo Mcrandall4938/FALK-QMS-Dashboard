@@ -177,11 +177,14 @@
   .dyn-row > div { flex: 1; }
   .dyn-row .rm { background: none; border: none; color: var(--sub); cursor: pointer; font-size: 15px; padding: 6px; }
   .add-row-btn { font-size: 12px; }
-  .why-table-wrap { overflow-x: auto; }
-  table.why-table { width: 100%; min-width: 760px; border-collapse: collapse; }
-  table.why-table th { font-size: 11px; padding: 8px 6px; background: #f7f8fa; }
-  table.why-table td { padding: 6px 4px; border: none; }
-  table.why-table input { width: 100%; border: 1px solid var(--line); border-radius: 5px; padding: 8px 9px; font-size: 13.5px; min-width: 90px; box-sizing: border-box; }
+  .why-card { border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin-bottom: 14px; background: #fbfcfe; }
+  .why-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .why-card-head span { font-weight: 700; font-size: 11.5px; color: var(--sub); text-transform: uppercase; letter-spacing: .03em; }
+  .why-card-head .rm { background: none; border: none; color: var(--sub); cursor: pointer; font-size: 16px; padding: 4px; }
+  .why-card .field { margin-bottom: 10px; }
+  .why-card .field:last-child { margin-bottom: 0; }
+  .why-card .field input { font-size: 13.5px; padding: 9px 10px; }
+  .why-card .why-root input { border-color: var(--accent); background: var(--blue-soft); font-weight: 600; }
 
   .modal-foot { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-top: 1px solid var(--line); }
   .note { font-size: 12px; color: var(--sub); margin-top: 16px; }
@@ -374,12 +377,7 @@
 
     <div class="tab-panel" data-panel="cause">
       <p class="hint">For each likely cause, ask "why" until you reach something you can actually fix — not "someone wasn't careful."</p>
-      <div class="why-table-wrap">
-        <table class="why-table">
-          <thead><tr><th style="width:16%">Potential cause</th><th>Why 1?</th><th>Why 2?</th><th>Why 3?</th><th>Why 4?</th><th>Why 5?</th><th style="width:16%">Root cause (confirmed)</th><th></th></tr></thead>
-          <tbody id="whyRows"></tbody>
-        </table>
-      </div>
+      <div id="whyRows"></div>
       <button type="button" class="btn btn-ghost btn-sm add-row-btn" id="addWhy" style="margin-top:8px;">+ Add potential cause</button>
     </div>
 
@@ -780,17 +778,33 @@
 
   function addWhyRow(v){
     v = v || {};
-    const tbody = document.getElementById('whyRows');
-    const tr = document.createElement('tr');
-    const keys = ['cause','why1','why2','why3','why4','why5','root'];
-    tr.innerHTML = keys.map(k => `<td><input type="text" data-k="${k}" value="${escapeHtml(v[k]||'')}"></td>`).join('') + '<td><button type="button" class="rm">✕</button></td>';
-    tr.querySelector('.rm').addEventListener('click', () => tr.remove());
-    tbody.appendChild(tr);
+    const container = document.getElementById('whyRows');
+    const card = document.createElement('div');
+    card.className = 'why-card';
+    card.innerHTML = `
+      <div class="why-card-head">
+        <span>Potential cause</span>
+        <button type="button" class="rm" title="Remove">✕</button>
+      </div>
+      <label class="field"><span class="lbl-text">What might be causing this?</span><input type="text" data-k="cause" placeholder="e.g. Nose band too pliable" value="${escapeHtml(v.cause||'')}"></label>
+      <div class="row2">
+        <label class="field"><span class="lbl-text">Why 1?</span><input type="text" data-k="why1" value="${escapeHtml(v.why1||'')}"></label>
+        <label class="field"><span class="lbl-text">Why 2?</span><input type="text" data-k="why2" value="${escapeHtml(v.why2||'')}"></label>
+      </div>
+      <div class="row2">
+        <label class="field"><span class="lbl-text">Why 3?</span><input type="text" data-k="why3" value="${escapeHtml(v.why3||'')}"></label>
+        <label class="field"><span class="lbl-text">Why 4?</span><input type="text" data-k="why4" value="${escapeHtml(v.why4||'')}"></label>
+      </div>
+      <label class="field"><span class="lbl-text">Why 5?</span><input type="text" data-k="why5" value="${escapeHtml(v.why5||'')}"></label>
+      <label class="field why-root"><span class="lbl-text">Root cause (confirmed)</span><input type="text" data-k="root" placeholder="The real, fixable cause" value="${escapeHtml(v.root||'')}"></label>
+    `;
+    card.querySelector('.rm').addEventListener('click', () => card.remove());
+    container.appendChild(card);
   }
   function getWhyRows(){
-    return Array.from(document.querySelectorAll('#whyRows tr')).map(tr => {
+    return Array.from(document.querySelectorAll('#whyRows .why-card')).map(card => {
       const obj = {};
-      ['cause','why1','why2','why3','why4','why5','root'].forEach(k => { obj[k] = tr.querySelector(`[data-k="${k}"]`).value.trim(); });
+      ['cause','why1','why2','why3','why4','why5','root'].forEach(k => { obj[k] = card.querySelector(`[data-k="${k}"]`).value.trim(); });
       return obj;
     }).filter(o => Object.values(o).some(v => v));
   }
