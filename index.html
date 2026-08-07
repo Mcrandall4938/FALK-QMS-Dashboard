@@ -292,6 +292,63 @@
       </div>
     </header>
 
+    <div class="view hidden" id="view-dashboard">
+      <div class="cards" id="dashCards" style="grid-template-columns: repeat(4,1fr);">
+        <div class="card" style="cursor:default;">
+          <div class="top-row"><div class="ic" style="background:#e7f0f9;color:#1f5c99"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg></div></div>
+          <div class="num" id="dashOpenCA">0</div>
+          <div class="lbl">Open Corrective Actions</div>
+        </div>
+        <div class="card" style="cursor:default;">
+          <div class="top-row"><div class="ic" style="background:#f1eafc;color:#7c4fd1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg></div></div>
+          <div class="num" id="dashPendingDocs">0</div>
+          <div class="lbl">Documents Pending Approval</div>
+        </div>
+        <div class="card" style="cursor:default;">
+          <div class="top-row"><div class="ic" style="background:#e6f6ee;color:#1a8754"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 10-5.4 5.4L2 19l3 3 7.3-7.3a4 4 0 005.4-5.4l-2.8 2.8-2-2 2.8-2.8z"/></svg></div></div>
+          <div class="num" id="dashActiveEC">0</div>
+          <div class="lbl">Active Change Requests</div>
+        </div>
+        <div class="card" style="cursor:default;">
+          <div class="top-row"><div class="ic" style="background:#fdeceb;color:#d1453d"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L1 21h22L12 2z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r="0.6" fill="currentColor"/></svg></div></div>
+          <div class="num" id="dashOverdueAll" style="color:var(--red);">0</div>
+          <div class="lbl">Overdue (All Modules)</div>
+        </div>
+      </div>
+
+      <div class="content-grid">
+        <div class="panel">
+          <div class="panel-head"><h3>Needs Attention</h3><span class="sub" id="dashFeedCount"></span></div>
+          <div id="dashFeedList"></div>
+        </div>
+        <div>
+          <div class="panel" style="margin-bottom:16px;">
+            <div class="panel-head"><h3>Quick Links</h3></div>
+            <div class="panel-body qa-list" id="dashQuickLinks">
+              <a data-goto="ca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
+                Corrective Actions
+              </a>
+              <a data-goto="dc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>
+                Document Control
+              </a>
+              <a data-goto="ec"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a4 4 0 10-5.4 5.4L2 19l3 3 7.3-7.3a4 4 0 005.4-5.4l-2.8 2.8-2-2 2.8-2.8z"/></svg>
+                Engineering Change
+              </a>
+              <a data-goto="training"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4h7a4 4 0 014 4v12a3 3 0 00-3-3H2z"/><path d="M22 4h-7a4 4 0 00-4 4v12a3 3 0 013-3h8z"/></svg>
+                Training
+              </a>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3>Recent Activity</h3></div>
+            <div id="dashRecentList"></div>
+          </div>
+        </div>
+      </div>
+
+      <p class="note">This overview pulls live from Corrective Actions, Document Control, and Engineering Change. Training isn't included yet since it doesn't persist data between sessions the same way &mdash; open the Training tab directly to check on trainees.</p>
+    </div>
+
     <div class="view" id="view-ca">
     <div class="cards" id="cards"></div>
 
@@ -881,10 +938,8 @@
   function svg(name, cls){ return '<svg class="'+(cls||'')+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+ICONS[name]+'</svg>'; }
 
   const NAV = [
-    {label:'Dashboard', icon:'home'},
+    {label:'Dashboard', icon:'home', view:'dashboard'},
     {label:'Corrective Actions', icon:'ca', view:'ca'},
-    {label:'Issues', icon:'alert'},
-    {label:'CAPA', icon:'shieldcheck'},
     {label:'Risk Management', icon:'shield'},
     {label:'Audits', icon:'bar'},
     {label:'Documents', icon:'folder', view:'dc'},
@@ -912,6 +967,7 @@
   }
 
   const PAGE_META = {
+    dashboard: {title:'Dashboard', tagline:'Quality management at a glance &nbsp;•&nbsp; live from Corrective Actions, Documents, and Engineering Change', icon:'home'},
     ca: {title:'Corrective Action', tagline:'Identify &nbsp;•&nbsp; Investigate &nbsp;•&nbsp; Correct &nbsp;•&nbsp; Prevent Recurrence', icon:'ca'},
     training: {title:'Training', tagline:'OJT tracking for Entry, Foam, and Exit &nbsp;•&nbsp; who&#39;s in training, and on what', icon:'book'},
     dc: {title:'Document Control', tagline:'Submit, review, and approve controlled documents &nbsp;•&nbsp; every revision tracked', icon:'folder'},
@@ -920,6 +976,7 @@
   let trainingLoaded = false;
   function switchView(view){
     currentView = view;
+    document.getElementById('view-dashboard').classList.toggle('hidden', view !== 'dashboard');
     document.getElementById('view-ca').classList.toggle('hidden', view !== 'ca');
     document.getElementById('view-training').classList.toggle('hidden', view !== 'training');
     document.getElementById('view-dc').classList.toggle('hidden', view !== 'dc');
@@ -934,6 +991,7 @@
       document.getElementById('titleIconWrap').innerHTML = svg(meta.icon);
     }
     if(view === 'training') loadTrainingFrame();
+    if(window.__qmsOnViewEnter && window.__qmsOnViewEnter[view]) window.__qmsOnViewEnter[view]();
     renderNav();
   }
   window.__qmsSwitchView = switchView;
@@ -984,7 +1042,7 @@
       localStorage.setItem(SEED_FLAG, '1');
     }
   }
-  function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(records)); }
+  function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(records)); if(window.__qmsRenderNotifications) window.__qmsRenderNotifications(); }
   function addDays(n){ const d = new Date(); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
 
   function seedData(){
@@ -1405,6 +1463,36 @@
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
   }
+
+  // ---- Notifications (plugs into the shared header bell + Dashboard feed) ----
+  function computeCANotifications(){
+    const items = [];
+    records.forEach(r => {
+      if(isOverdue(r)){
+        items.push({type:'overdue', urgent:true, date:r.dueDate, docId:r.id,
+          text:`<b>${escapeHtml(r.id)}</b> is overdue (due ${r.dueDate})`});
+      } else if(r.status === 'Pending Verification'){
+        items.push({type:'pending', urgent:true, date:r.lastUpdated||r.dueDate||'', docId:r.id,
+          text:`<b>${escapeHtml(r.id)}</b> needs an effectiveness check`});
+      } else if(r.status === 'Closed' && r.lastUpdated && r.lastUpdated >= addDays(-7)){
+        items.push({type:'approved', urgent:false, date:r.lastUpdated, docId:r.id,
+          text:`<b>${escapeHtml(r.id)}</b> was closed`});
+      }
+    });
+    return items.map(i => Object.assign({view:'ca'}, i));
+  }
+  window.__qmsNotifProviders = window.__qmsNotifProviders || [];
+  window.__qmsNotifProviders.push(computeCANotifications);
+  window.__qmsOpenDetail = window.__qmsOpenDetail || {};
+  window.__qmsOpenDetail.ca = function(id){
+    openDetailId = id;
+    cardFilter = null;
+    document.getElementById('search').value = '';
+    document.getElementById('filterStatus').value = '';
+    document.getElementById('filterPriority').value = '';
+    document.getElementById('filterDept').value = '';
+    renderAll();
+  };
 
   // Events
   document.getElementById('newBtn').addEventListener('click', () => openModal(null));
@@ -2497,6 +2585,98 @@
   renderAll();
   if(window.__qmsRenderNotifications) window.__qmsRenderNotifications();
   console.log('Engineering Change loaded with', changes.length, 'change requests');
+})();
+</script>
+
+<script>
+(function(){
+  function readList(key){
+    try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch(e){ return []; }
+  }
+  function todayStr(){ return new Date().toISOString().slice(0,10); }
+  function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  const ICONS = {
+    alert: '<path d="M12 2L1 21h22L12 2z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r="0.6" fill="currentColor"/>',
+    ca: '<path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/>'
+  };
+  function svg(name){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+ICONS[name]+'</svg>'; }
+  function notifIconFor(type){
+    if(type==='overdue') return {bg:'#fdeceb', color:'#d1453d', icon:'alert'};
+    if(type==='pending') return {bg:'#f1eafc', color:'#7c4fd1', icon:'alert'};
+    return {bg:'#e6f6ee', color:'#1a8754', icon:'ca'};
+  }
+
+  function collectItems(){
+    let items = [];
+    (window.__qmsNotifProviders||[]).forEach(fn => { try { items = items.concat(fn()||[]); } catch(e){ console.error(e); } });
+    return items;
+  }
+
+  function feedRow(i){
+    const ic = notifIconFor(i.type);
+    return `<div class="notif-item" data-view="${i.view}" data-doc="${escapeHtml(i.docId)}">
+      <div class="ic" style="background:${ic.bg};color:${ic.color}">${svg(ic.icon)}</div>
+      <div class="txt"><div>${i.text}</div><div class="when">${i.date||''}</div></div>
+    </div>`;
+  }
+
+  function renderDashboard(){
+    const ca = readList('ca_dashboard_v1');
+    const dc = readList('dc_dashboard_v1');
+    const ec = readList('ec_dashboard_v1');
+    const today = todayStr();
+
+    const openCA = ca.filter(r => r.status !== 'Closed').length;
+    const pendingDocs = dc.filter(d => d.status === 'Pending Approval').length;
+    const activeEC = ec.filter(c => ['Draft','Pending Approval','Approved'].indexOf(c.status) !== -1).length;
+    const overdueAll =
+      ca.filter(r => r.status !== 'Closed' && r.dueDate && r.dueDate < today).length +
+      dc.filter(d => d.status === 'Pending Approval' && d.dueDate && d.dueDate < today).length +
+      ec.filter(c => c.status === 'Pending Approval' && c.dueDate && c.dueDate < today).length;
+
+    const elCA = document.getElementById('dashOpenCA');
+    if(!elCA) return; // dashboard markup not present (shouldn't happen, but stay safe)
+    elCA.textContent = openCA;
+    document.getElementById('dashPendingDocs').textContent = pendingDocs;
+    document.getElementById('dashActiveEC').textContent = activeEC;
+    document.getElementById('dashOverdueAll').textContent = overdueAll;
+
+    const items = collectItems();
+    items.sort((a,b) => (a.urgent!==b.urgent) ? (b.urgent?1:-1) : String(b.date||'').localeCompare(String(a.date||'')));
+    const urgent = items.filter(i=>i.urgent);
+    const recent = items.filter(i=>!i.urgent);
+
+    document.getElementById('dashFeedCount').textContent = urgent.length ? (urgent.length + ' need action') : '';
+    const feedList = document.getElementById('dashFeedList');
+    feedList.innerHTML = urgent.length
+      ? urgent.map(feedRow).join('')
+      : '<div class="notif-empty">Nothing needs attention right now &mdash; nice work.</div>';
+
+    const recentList = document.getElementById('dashRecentList');
+    recentList.innerHTML = recent.length
+      ? recent.slice(0,8).map(feedRow).join('')
+      : '<div class="notif-empty">No recent activity.</div>';
+
+    document.querySelectorAll('#view-dashboard .notif-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const view = el.getAttribute('data-view');
+        const docId = el.getAttribute('data-doc');
+        if(window.__qmsSwitchView) window.__qmsSwitchView(view);
+        if(window.__qmsOpenDetail && window.__qmsOpenDetail[view]) window.__qmsOpenDetail[view](docId);
+      });
+    });
+  }
+
+  document.querySelectorAll('#dashQuickLinks a[data-goto]').forEach(a => {
+    a.addEventListener('click', () => { if(window.__qmsSwitchView) window.__qmsSwitchView(a.getAttribute('data-goto')); });
+  });
+
+  window.__qmsOnViewEnter = window.__qmsOnViewEnter || {};
+  window.__qmsOnViewEnter.dashboard = renderDashboard;
+
+  renderDashboard();
+  console.log('Dashboard overview loaded');
 })();
 </script>
 
