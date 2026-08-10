@@ -236,6 +236,9 @@
   .link-chip.ca { background: var(--red-soft); color: var(--red); }
   .link-chip.doc { background: var(--blue-soft); color: var(--blue); }
   .link-picker-list { max-height: 160px; overflow-y: auto; border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; background: #fff; }
+  .cal-In-Service { background: var(--green-soft); color: var(--green); }
+  .cal-Out-for-Calibration { background: var(--purple-soft); color: var(--purple); }
+  .cal-Out-of-Service { background: #eef1f5; color: #5b6675; }
 </style>
 </head>
 <body>
@@ -277,6 +280,10 @@
         <div id="ecOnlyActions" style="display:none; align-items:center; gap:14px;">
           <button class="btn btn-ghost" id="ecExportBtn">Export CSV</button>
           <button class="btn btn-primary" id="ecNewBtn">+ New Change Request</button>
+        </div>
+        <div id="calOnlyActions" style="display:none; align-items:center; gap:14px;">
+          <button class="btn btn-ghost" id="calExportBtn">Export CSV</button>
+          <button class="btn btn-primary" id="calNewBtn">+ New Equipment</button>
         </div>
         <div class="notif-wrap">
           <div class="icon-btn" title="Notifications" id="notifBell" style="cursor:pointer;">
@@ -337,6 +344,9 @@
               <a data-goto="training"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4h7a4 4 0 014 4v12a3 3 0 00-3-3H2z"/><path d="M22 4h-7a4 4 0 00-4 4v12a3 3 0 013-3h8z"/></svg>
                 Training
               </a>
+              <a data-goto="cal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6l8-4z"/><path d="M9 12l2 2 4-4"/></svg>
+                Equipment Calibration
+              </a>
             </div>
           </div>
           <div class="panel">
@@ -346,7 +356,7 @@
         </div>
       </div>
 
-      <p class="note">This overview pulls live from Corrective Actions, Document Control, and Engineering Change. Training isn't included yet since it doesn't persist data between sessions the same way &mdash; open the Training tab directly to check on trainees.</p>
+      <p class="note">This overview pulls live from Corrective Actions, Document Control, Engineering Change, and Equipment Calibration. Training isn't included yet since it doesn't persist data between sessions the same way &mdash; open the Training tab directly to check on trainees.</p>
     </div>
 
     <div class="view" id="view-ca">
@@ -628,6 +638,100 @@
 
       <p class="note">Data is stored locally in this dashboard on this device. Links to Corrective Actions and Documents are looked up live from those tabs' own data. Use <b>Export</b> regularly to back up or share with your team.</p>
     </div>
+
+    <div class="view hidden" id="view-cal">
+      <div class="cards" id="calCards"></div>
+
+      <div class="content-grid">
+        <div class="panel">
+          <div class="toolbar">
+            <input type="text" id="calSearch" placeholder="Search equipment ID, asset tag, description, owner...">
+            <select id="calFilterStatus">
+              <option value="">All statuses</option>
+              <option>In Service</option>
+              <option>Out for Calibration</option>
+              <option>Out of Service</option>
+            </select>
+            <select id="calFilterCategory">
+              <option value="">All categories</option>
+              <option>Tape Measure</option>
+              <option>Caliper</option>
+              <option>Micrometer</option>
+              <option>Scale / Balance</option>
+              <option>Gauge</option>
+              <option>Thermometer</option>
+              <option>Pressure Gauge</option>
+              <option>Torque Wrench</option>
+              <option>Other</option>
+            </select>
+            <select id="calFilterDept">
+              <option value="">All departments</option>
+            </select>
+            <div class="spacer"></div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Equipment ID</th>
+                  <th>Description / Category</th>
+                  <th>Department</th>
+                  <th>Cal Type</th>
+                  <th>Status</th>
+                  <th>Next Due</th>
+                  <th>Owner</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="calTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div>
+          <div class="panel" style="margin-bottom:16px;">
+            <div class="panel-head"><h3>Calibration Process</h3></div>
+            <div class="panel-body">
+              <div class="steps" id="calStepsRow"></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3>Quick Actions</h3></div>
+            <div class="panel-body qa-list">
+              <a id="calQaNew">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add Equipment
+              </a>
+              <a id="calQaDueSoon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
+                Due Soon
+              </a>
+              <a id="calQaOverdue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Overdue
+                <span class="count" id="calOverdueCount">0</span>
+              </a>
+              <a id="calQaExport">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                Equipment Register (CSV)
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="goal-banner">
+        <div class="ic">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6l8-4z"/><path d="M9 12l2 2 4-4"/></svg>
+        </div>
+        <div>
+          <h4>Our Goal: Every Measurement Trustworthy</h4>
+          <p>Every gauge and instrument stays in calibration, on schedule, with a certificate to prove it.</p>
+        </div>
+      </div>
+
+      <p class="note">Data is stored locally in this dashboard on this device. Use <b>Export</b> regularly to back up or share with your team.</p>
+    </div>
   </main>
 </div>
 
@@ -674,6 +778,14 @@
       <label class="field"><span class="lbl-text">Status</span>
         <select id="f_status"><option>Open</option><option>In Progress</option><option>Pending Verification</option><option>Closed</option></select>
       </label>
+      <div class="dyn-block" style="margin-top:4px;">
+        <div style="font-weight:700;font-size:12.5px;margin-bottom:8px;">Attachments</div>
+        <p class="hint" style="margin-top:-4px;">Photos, NCR forms, supplier docs — anything that supports this corrective action.</p>
+        <div class="file-input-row" id="ca_fileChipWrap"></div>
+        <label class="field"><span class="lbl-text">Add file</span>
+          <input type="file" id="ca_fileInput">
+        </label>
+      </div>
     </div>
 
     <div class="tab-panel" data-panel="team">
@@ -856,6 +968,14 @@
         </label>
       </div>
       <label class="field"><span class="lbl-text">Reason for change / description</span><textarea id="ec_description" placeholder="What's changing and why?"></textarea></label>
+      <div class="dyn-block" style="margin-top:4px;">
+        <div style="font-weight:700;font-size:12.5px;margin-bottom:8px;">Attachments</div>
+        <p class="hint" style="margin-top:-4px;">Drawings, spec sheets, supplier docs — anything that supports this change.</p>
+        <div class="file-input-row" id="ec_fileChipWrap"></div>
+        <label class="field"><span class="lbl-text">Add file</span>
+          <input type="file" id="ec_fileInput">
+        </label>
+      </div>
     </div>
 
     <div class="tab-panel" data-panel="ec-impact">
@@ -911,6 +1031,103 @@
   </div>
 </div>
 
+<!-- Equipment Calibration Modal -->
+<div class="overlay" id="calOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="calModalTitle">Add Equipment</h2>
+      <button class="modal-close" id="calCloseModal">✕</button>
+    </div>
+    <div class="tabs" id="calTabs">
+      <button class="tab-btn active" data-tab="cal-overview">Overview</button>
+      <button class="tab-btn" data-tab="cal-schedule">Calibration Schedule</button>
+      <button class="tab-btn" data-tab="cal-log">Log Calibration</button>
+    </div>
+
+    <div class="tab-panel active" data-panel="cal-overview">
+      <p class="hint">What the equipment is, and who's responsible for it.</p>
+      <div class="row2">
+        <label class="field"><span class="lbl-text">Asset tag / ID</span><input type="text" id="cal_assetTag" placeholder="e.g. TM-014"></label>
+        <label class="field"><span class="lbl-text">Description</span><input type="text" id="cal_name" placeholder="e.g. 25' Tape Measure"></label>
+      </div>
+      <div class="row3">
+        <label class="field"><span class="lbl-text">Category</span>
+          <select id="cal_category">
+            <option>Tape Measure</option><option>Caliper</option><option>Micrometer</option>
+            <option>Scale / Balance</option><option>Gauge</option><option>Thermometer</option>
+            <option>Pressure Gauge</option><option>Torque Wrench</option><option>Other</option>
+          </select>
+        </label>
+        <label class="field"><span class="lbl-text">Department</span>
+          <select id="cal_department">
+            <option>Operations</option><option>Quality</option><option>Maintenance</option>
+            <option>Shipping/Logistics</option><option>Customer Service</option><option>Sales</option>
+            <option>Continuous Improvement</option><option>Engineering</option><option>Administration</option><option>Other</option>
+          </select>
+        </label>
+        <label class="field"><span class="lbl-text">Owner</span><input type="text" id="cal_owner" placeholder="Name"></label>
+      </div>
+      <label class="field"><span class="lbl-text">Notes</span><textarea id="cal_notes" placeholder="Anything else worth knowing about this piece of equipment."></textarea></label>
+    </div>
+
+    <div class="tab-panel" data-panel="cal-schedule">
+      <p class="hint">Who calibrates it, how often, and its current status.</p>
+      <div class="row2">
+        <label class="field"><span class="lbl-text">Calibration type</span>
+          <select id="cal_calType">
+            <option>Internal</option><option>External</option>
+          </select>
+        </label>
+        <label class="field"><span class="lbl-text">Vendor (if external)</span><input type="text" id="cal_vendor" placeholder="e.g. Zoro Precision Cal Services"></label>
+      </div>
+      <div class="row3">
+        <label class="field"><span class="lbl-text">Calibration interval</span>
+          <select id="cal_interval">
+            <option value="1">Monthly</option>
+            <option value="3">Quarterly</option>
+            <option value="6">Semi-Annual</option>
+            <option value="12" selected>Annual</option>
+            <option value="24">Biennial (every 2 years)</option>
+            <option value="0">Other / manual</option>
+          </select>
+        </label>
+        <label class="field"><span class="lbl-text">Next due date</span><input type="date" id="cal_nextDueDate"></label>
+        <label class="field"><span class="lbl-text">Status</span>
+          <select id="cal_status">
+            <option>In Service</option><option>Out for Calibration</option><option>Out of Service</option>
+          </select>
+        </label>
+      </div>
+      <p class="hint" id="cal_nextDueHint" style="margin-top:-4px;">Leave "Next due date" blank to auto-calculate it from the last calibration date and interval once you log a calibration below.</p>
+    </div>
+
+    <div class="tab-panel" data-panel="cal-log">
+      <p class="hint" id="cal_logHint">Record a calibration event — this updates the last-calibrated date, recalculates the next due date, and keeps a certificate on file.</p>
+      <div class="row2">
+        <label class="field"><span class="lbl-text">Date performed</span><input type="date" id="cal_logDate"></label>
+        <label class="field"><span class="lbl-text">Result</span>
+          <select id="cal_logResult"><option>Pass</option><option>Adjusted</option><option>Fail</option></select>
+        </label>
+      </div>
+      <label class="field"><span class="lbl-text">Performed by</span><input type="text" id="cal_logPerformedBy" placeholder="Technician or vendor name"></label>
+      <label class="field"><span class="lbl-text">Notes</span><textarea id="cal_logNotes" placeholder="Any adjustments made, or details on the result."></textarea></label>
+      <label class="field"><span class="lbl-text">Attach certificate</span>
+        <input type="file" id="cal_fileInput">
+      </label>
+      <div class="file-input-row" id="cal_fileChipWrap"></div>
+      <div id="cal_historyList" style="margin-top:16px;"></div>
+    </div>
+
+    <div class="modal-foot">
+      <button class="btn btn-ghost btn-sm" id="calDeleteBtn" type="button">Delete</button>
+      <div>
+        <button class="btn btn-ghost btn-sm" id="calCancelBtn" type="button">Cancel</button>
+        <button class="btn btn-primary btn-sm" id="calSaveBtn" type="button">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
   const STORE_KEY = 'ca_dashboard_v1';
@@ -919,6 +1136,7 @@
   let records = [];
   let editingId = null;
   let cardFilter = null;
+  let pendingFiles = [];
 
   const ICONS = {
     home: '<path d="M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10"/>',
@@ -933,7 +1151,8 @@
     gear: '<circle cx="12" cy="12" r="3"/><path d="M4 12a8 8 0 011-3.9M20 12a8 8 0 01-1 3.9M12 4a8 8 0 013.9 1M12 20a8 8 0 01-3.9-1M4.5 7.5l1.5 1M18 15.5l1.5 1M19.5 7.5L18 8.5M6 15.5L4.5 16.5"/>',
     search: '<circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
     tools: '<path d="M14.7 6.3a4 4 0 10-5.4 5.4L2 19l3 3 7.3-7.3a4 4 0 005.4-5.4l-2.8 2.8-2-2 2.8-2.8z"/>',
-    shieldcheck: '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6l8-4z"/><path d="M9 12l2 2 4-4"/>'
+    shieldcheck: '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6l8-4z"/><path d="M9 12l2 2 4-4"/>',
+    x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'
   };
   function svg(name, cls){ return '<svg class="'+(cls||'')+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+ICONS[name]+'</svg>'; }
 
@@ -944,6 +1163,7 @@
     {label:'Audits', icon:'bar'},
     {label:'Documents', icon:'folder', view:'dc'},
     {label:'Engineering Change', icon:'tools', view:'ec'},
+    {label:'Equipment Calibration', icon:'shieldcheck', view:'cal'},
     {label:'Reports', icon:'file'},
     {label:'Training', icon:'book', view:'training'},
     {label:'Suppliers', icon:'truck'},
@@ -967,11 +1187,12 @@
   }
 
   const PAGE_META = {
-    dashboard: {title:'Dashboard', tagline:'Quality management at a glance &nbsp;•&nbsp; live from Corrective Actions, Documents, and Engineering Change', icon:'home'},
+    dashboard: {title:'Dashboard', tagline:'Quality management at a glance &nbsp;•&nbsp; live from Corrective Actions, Documents, Engineering Change, and Equipment Calibration', icon:'home'},
     ca: {title:'Corrective Action', tagline:'Identify &nbsp;•&nbsp; Investigate &nbsp;•&nbsp; Correct &nbsp;•&nbsp; Prevent Recurrence', icon:'ca'},
     training: {title:'Training', tagline:'OJT tracking for Entry, Foam, and Exit &nbsp;•&nbsp; who&#39;s in training, and on what', icon:'book'},
     dc: {title:'Document Control', tagline:'Submit, review, and approve controlled documents &nbsp;•&nbsp; every revision tracked', icon:'folder'},
-    ec: {title:'Engineering Change', tagline:'Request, assess, and approve changes &nbsp;•&nbsp; linked to corrective actions and documents', icon:'tools'}
+    ec: {title:'Engineering Change', tagline:'Request, assess, and approve changes &nbsp;•&nbsp; linked to corrective actions and documents', icon:'tools'},
+    cal: {title:'Equipment Calibration', tagline:'Track calibration schedules, certificates, and due dates &nbsp;•&nbsp; internal and external', icon:'shieldcheck'}
   };
   let trainingLoaded = false;
   function switchView(view){
@@ -981,9 +1202,11 @@
     document.getElementById('view-training').classList.toggle('hidden', view !== 'training');
     document.getElementById('view-dc').classList.toggle('hidden', view !== 'dc');
     document.getElementById('view-ec').classList.toggle('hidden', view !== 'ec');
+    document.getElementById('view-cal').classList.toggle('hidden', view !== 'cal');
     document.getElementById('caOnlyActions').style.display = (view === 'ca') ? 'flex' : 'none';
     document.getElementById('dcOnlyActions').style.display = (view === 'dc') ? 'flex' : 'none';
     document.getElementById('ecOnlyActions').style.display = (view === 'ec') ? 'flex' : 'none';
+    document.getElementById('calOnlyActions').style.display = (view === 'cal') ? 'flex' : 'none';
     const meta = PAGE_META[view];
     if(meta){
       document.getElementById('pageTitle').textContent = meta.title;
@@ -995,6 +1218,59 @@
     renderNav();
   }
   window.__qmsSwitchView = switchView;
+  window.__qmsShowImage = window.__qmsShowImage || function(url, title){
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(11,17,32,.8);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;cursor:zoom-out;';
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = title || '';
+    img.style.cssText = 'max-width:92vw;max-height:92vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.45);cursor:default;';
+    ov.appendChild(img);
+    ov.addEventListener('click', () => ov.remove());
+    document.addEventListener('keydown', function esc(e){ if(e.key==='Escape'){ ov.remove(); document.removeEventListener('keydown', esc); } });
+    document.body.appendChild(ov);
+  };
+  window.__qmsCompressImage = window.__qmsCompressImage || function(file, maxDim, quality){
+    maxDim = maxDim || 1600;
+    quality = quality || 0.82;
+    const plain = () => new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve({fileName: file.name, fileSize: file.size, fileType: file.type, fileDataUrl: reader.result});
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
+    if(!file.type || !file.type.startsWith('image/') || file.type === 'image/gif'){
+      return plain();
+    }
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          let width = img.naturalWidth, height = img.naturalHeight;
+          if(width > maxDim || height > maxDim){
+            if(width >= height){ height = Math.round(height * (maxDim / width)); width = maxDim; }
+            else { width = Math.round(width * (maxDim / height)); height = maxDim; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', quality);
+          const approxBytes = Math.round((dataUrl.length - dataUrl.indexOf(',') - 1) * 0.75);
+          if(approxBytes > 0 && approxBytes < file.size){
+            resolve({fileName: file.name.replace(/\.\w+$/, '') + '.jpg', fileSize: approxBytes, fileType: 'image/jpeg', fileDataUrl: dataUrl});
+          } else {
+            resolve({fileName: file.name, fileSize: file.size, fileType: file.type, fileDataUrl: reader.result});
+          }
+        };
+        img.onerror = () => resolve({fileName: file.name, fileSize: file.size, fileType: file.type, fileDataUrl: reader.result});
+        img.src = reader.result;
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
+  };
   function loadTrainingFrame(){
     if(trainingLoaded) return;
     trainingLoaded = true;
@@ -1023,6 +1299,12 @@
   function uid(){ return 'CA-' + new Date().getFullYear() + '-' + String(Date.now()).slice(-4); }
   function todayStr(){ return new Date().toISOString().slice(0,10); }
   function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function fmtBytes(n){
+    if(!n) return '';
+    if(n < 1024) return n + ' B';
+    if(n < 1024*1024) return (n/1024).toFixed(1) + ' KB';
+    return (n/1024/1024).toFixed(1) + ' MB';
+  }
   function initials(name){
     if(!name) return '—';
     const parts = name.trim().split(/\\s+/);
@@ -1042,7 +1324,16 @@
       localStorage.setItem(SEED_FLAG, '1');
     }
   }
-  function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(records)); if(window.__qmsRenderNotifications) window.__qmsRenderNotifications(); }
+  function save(){
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(records));
+      if(window.__qmsRenderNotifications) window.__qmsRenderNotifications();
+      return true;
+    } catch(e) {
+      console.error('Corrective Action save failed:', e);
+      return false;
+    }
+  }
   function addDays(n){ const d = new Date(); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
 
   function seedData(){
@@ -1245,6 +1536,17 @@
         renderTable();
       });
     });
+    tbody.querySelectorAll('.attach-preview').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = el.getAttribute('data-rec');
+        const idx = parseInt(el.getAttribute('data-idx'), 10);
+        const rec = records.find(x=>x.id===id);
+        const f = rec && rec.attachments && rec.attachments[idx];
+        if(f && window.__qmsShowImage) window.__qmsShowImage(f.fileDataUrl, f.fileName);
+      });
+    });
   }
 
   function renderDetailRow(r){
@@ -1266,6 +1568,10 @@
           <div class="kv"><b>Owner</b>${escapeHtml(r.owner||'—')}</div>
           <div class="kv"><b>Department</b>${escapeHtml(r.department||'—')}</div>
           <div class="kv"><b>Description</b><div class="desc-box">${escapeHtml(r.description||'—')}</div></div>
+          <div class="kv"><b>Attachments</b><div class="file-input-row" style="margin-top:4px;">${(r.attachments&&r.attachments.length) ? r.attachments.map((f,i) => (f.fileType||'').startsWith('image/')
+              ? `<a class="file-chip attach-preview" href="#" style="cursor:zoom-in;" data-rec="${escapeHtml(r.id)}" data-idx="${i}">${svg('file')}${escapeHtml(f.fileName)}${f.fileSize?(' · '+fmtBytes(f.fileSize)):''}</a>`
+              : `<a class="file-chip" href="${f.fileDataUrl}" download="${escapeHtml(f.fileName)}">${svg('file')}${escapeHtml(f.fileName)}${f.fileSize?(' · '+fmtBytes(f.fileSize)):''}</a>`
+            ).join('') : '<span class="hint" style="margin:0;">No files attached.</span>'}</div></div>
         </div>
         <div class="detail-col">
           <h5>Root Cause &amp; Corrective Action</h5>
@@ -1349,6 +1655,30 @@
     }).filter(o => Object.values(o).some(v => v));
   }
 
+  function renderFileChipEditor(){
+    const wrap = document.getElementById('ca_fileChipWrap');
+    wrap.innerHTML = pendingFiles.map((f,i) => `<span class="file-chip">${svg('file')}${escapeHtml(f.fileName)}${f.fileSize?(' · '+fmtBytes(f.fileSize)):''}<span class="rm" data-rmfile="${i}">${svg('x')}</span></span>`).join('')
+      || '<span class="hint" style="margin:0;">No files attached yet.</span>';
+    wrap.querySelectorAll('[data-rmfile]').forEach(el => {
+      el.addEventListener('click', () => {
+        pendingFiles.splice(Number(el.getAttribute('data-rmfile')), 1);
+        renderFileChipEditor();
+      });
+    });
+  }
+  document.getElementById('ca_fileInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    e.target.value = '';
+    document.getElementById('ca_fileChipWrap').insertAdjacentHTML('beforeend', '<span class="hint" style="margin:0;" id="ca_compressingNote">Compressing image\u2026</span>');
+    window.__qmsCompressImage(file).then((info) => {
+      const note = document.getElementById('ca_compressingNote');
+      if(note) note.remove();
+      if(info) pendingFiles.push(info);
+      renderFileChipEditor();
+    });
+  });
+
   function switchTab(name){
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab===name));
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.dataset.panel===name));
@@ -1397,10 +1727,14 @@
     const whys = (r && r.whys && r.whys.length) ? r.whys : [{}];
     whys.forEach(addWhyRow);
 
+    pendingFiles = (r && r.attachments) ? r.attachments.slice() : [];
+    document.getElementById('ca_fileInput').value = '';
+    renderFileChipEditor();
+
     document.getElementById('deleteBtn').style.display = r ? 'inline-flex' : 'none';
     document.getElementById('overlay').classList.add('show');
   }
-  function closeModal(){ document.getElementById('overlay').classList.remove('show'); editingId = null; }
+  function closeModal(){ document.getElementById('overlay').classList.remove('show'); editingId = null; pendingFiles = []; }
 
   function saveRecord(){
     const title = document.getElementById('f_title').value.trim();
@@ -1425,6 +1759,7 @@
     rec.dateClosed = document.getElementById('f_dateClosed').value;
     rec.verification = document.getElementById('f_verification').value.trim();
     rec.recognition = document.getElementById('f_recognition').value.trim();
+    rec.attachments = pendingFiles.slice();
 
     rec.team = getDynRows(document.getElementById('teamRows'), ['name','dept','role']);
     rec.containment = getDynRows(document.getElementById('containRows'), ['action','owner','due']);
@@ -1435,7 +1770,11 @@
     rec.lastUpdatedBy = 'Matt Crandall';
     rec.lastUpdated = todayStr();
 
-    save();
+    if(!save()){
+      load();
+      alert("Couldn't save \u2014 this browser's local storage for the dashboard is full (usually from file attachments piling up across records over time). Try removing this attachment or using a smaller file, or open an older record and remove one of its attachments to free up space, then save again.");
+      return;
+    }
     closeModal();
     renderAll();
   }
@@ -1593,7 +1932,16 @@
       localStorage.setItem(SEED_FLAG, '1');
     }
   }
-  function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(docs)); renderNotifications(); }
+  function save(){
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(docs));
+      renderNotifications();
+      return true;
+    } catch(e) {
+      console.error('Document Control save failed:', e);
+      return false;
+    }
+  }
 
   function seedData(){
     return [
@@ -1843,12 +2191,11 @@
   document.getElementById('dc_fileInput').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if(!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      pendingFile = {fileName: file.name, fileSize: file.size, fileType: file.type, fileDataUrl: reader.result};
+    document.getElementById('dc_fileChipWrap').innerHTML = '<span class="hint" style="margin:0;">Compressing image\u2026</span>';
+    window.__qmsCompressImage(file).then((info) => {
+      if(info) pendingFile = info;
       renderFileChipEditor(null);
-    };
-    reader.readAsDataURL(file);
+    });
   });
 
   function openModal(id, focusTab, isNewRevision){
@@ -1959,7 +2306,11 @@
     d.lastUpdatedBy = 'Matt Crandall';
     d.lastUpdated = todayStr();
 
-    save();
+    if(!save()){
+      load();
+      alert("Couldn't save \u2014 this browser's local storage for the dashboard is full (usually from file attachments piling up across records over time). Try removing this attachment or using a smaller file, or open an older record and remove one of its attachments to free up space, then save again.");
+      return;
+    }
     closeModal();
     renderAll();
   }
@@ -2113,6 +2464,7 @@
   let editingId = null;
   let cardFilter = null;
   let openDetailId = null;
+  let pendingFiles = [];
 
   const ICONS = {
     tools: '<path d="M14.7 6.3a4 4 0 10-5.4 5.4L2 19l3 3 7.3-7.3a4 4 0 005.4-5.4l-2.8 2.8-2-2 2.8-2.8z"/>',
@@ -2121,7 +2473,8 @@
     approve: '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6l8-4z"/><path d="M9 12l2 2 4-4"/>',
     live: '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>',
     alert: '<path d="M12 2L1 21h22L12 2z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r="0.6" fill="currentColor"/>',
-    file: '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>'
+    file: '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>',
+    x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'
   };
   function svg(name, cls){ return '<svg class="'+(cls||'')+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+ICONS[name]+'</svg>'; }
 
@@ -2142,6 +2495,12 @@
   function uid(){ return 'EC-' + new Date().getFullYear() + '-' + String(Date.now()).slice(-4); }
   function todayStr(){ return new Date().toISOString().slice(0,10); }
   function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function fmtBytes(n){
+    if(!n) return '';
+    if(n < 1024) return n + ' B';
+    if(n < 1024*1024) return (n/1024).toFixed(1) + ' KB';
+    return (n/1024/1024).toFixed(1) + ' MB';
+  }
   function initials(name){
     if(!name) return '—';
     const parts = name.trim().split(/\s+/);
@@ -2169,7 +2528,16 @@
       localStorage.setItem(SEED_FLAG, '1');
     }
   }
-  function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(changes)); if(window.__qmsRenderNotifications) window.__qmsRenderNotifications(); }
+  function save(){
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(changes));
+      if(window.__qmsRenderNotifications) window.__qmsRenderNotifications();
+      return true;
+    } catch(e) {
+      console.error('Engineering Change save failed:', e);
+      return false;
+    }
+  }
 
   function seedData(){
     return [
@@ -2317,6 +2685,17 @@
         if(c){ c.status = 'Implemented'; c.implementedDate = todayStr(); c.lastUpdatedBy='Matt Crandall'; c.lastUpdated=todayStr(); save(); renderAll(); }
       });
     });
+    tbody.querySelectorAll('.attach-preview').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = el.getAttribute('data-rec');
+        const idx = parseInt(el.getAttribute('data-idx'), 10);
+        const c = changes.find(x=>x.id===id);
+        const f = c && c.attachments && c.attachments[idx];
+        if(f && window.__qmsShowImage) window.__qmsShowImage(f.fileDataUrl, f.fileName);
+      });
+    });
   }
 
   function renderDetailRow(c){
@@ -2342,6 +2721,10 @@
           <div class="kv"><b>Requested by</b>${escapeHtml(c.owner||'—')}</div>
           <div class="kv"><b>Approver</b>${escapeHtml(c.approver||'—')}</div>
           <div class="kv"><b>Reason for change</b><div class="desc-box">${escapeHtml(c.description||'—')}</div></div>
+          <div class="kv"><b>Attachments</b><div class="file-input-row" style="margin-top:4px;">${(c.attachments&&c.attachments.length) ? c.attachments.map((f,i) => (f.fileType||'').startsWith('image/')
+              ? `<a class="file-chip attach-preview" href="#" style="cursor:zoom-in;" data-rec="${escapeHtml(c.id)}" data-idx="${i}">${svg('file')}${escapeHtml(f.fileName)}${f.fileSize?(' · '+fmtBytes(f.fileSize)):''}</a>`
+              : `<a class="file-chip" href="${f.fileDataUrl}" download="${escapeHtml(f.fileName)}">${svg('file')}${escapeHtml(f.fileName)}${f.fileSize?(' · '+fmtBytes(f.fileSize)):''}</a>`
+            ).join('') : '<span class="hint" style="margin:0;">No files attached.</span>'}</div></div>
         </div>
         <div class="detail-col">
           <h5>Impact &amp; Status</h5>
@@ -2386,6 +2769,30 @@
   document.getElementById('ecTabs').addEventListener('click', (e) => {
     const btn = e.target.closest('.tab-btn');
     if(btn) switchTab(btn.dataset.tab);
+  });
+
+  function renderFileChipEditor(){
+    const wrap = document.getElementById('ec_fileChipWrap');
+    wrap.innerHTML = pendingFiles.map((f,i) => `<span class="file-chip">${svg('file')}${escapeHtml(f.fileName)}${f.fileSize?(' · '+fmtBytes(f.fileSize)):''}<span class="rm" data-rmfile="${i}">${svg('x')}</span></span>`).join('')
+      || '<span class="hint" style="margin:0;">No files attached yet.</span>';
+    wrap.querySelectorAll('[data-rmfile]').forEach(el => {
+      el.addEventListener('click', () => {
+        pendingFiles.splice(Number(el.getAttribute('data-rmfile')), 1);
+        renderFileChipEditor();
+      });
+    });
+  }
+  document.getElementById('ec_fileInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    e.target.value = '';
+    document.getElementById('ec_fileChipWrap').insertAdjacentHTML('beforeend', '<span class="hint" style="margin:0;" id="ec_compressingNote">Compressing image\u2026</span>');
+    window.__qmsCompressImage(file).then((info) => {
+      const note = document.getElementById('ec_compressingNote');
+      if(note) note.remove();
+      if(info) pendingFiles.push(info);
+      renderFileChipEditor();
+    });
   });
 
   function populateLinkPickers(existing){
@@ -2440,10 +2847,14 @@
     document.getElementById('ec_verifiedDate').value = c ? (c.verifiedDate||'') : '';
     document.getElementById('ec_verificationNotes').value = c ? (c.verificationNotes||'') : '';
 
+    pendingFiles = (c && c.attachments) ? c.attachments.slice() : [];
+    document.getElementById('ec_fileInput').value = '';
+    renderFileChipEditor();
+
     document.getElementById('ecDeleteBtn').style.display = c ? 'inline-flex' : 'none';
     document.getElementById('ecOverlay').classList.add('show');
   }
-  function closeModal(){ document.getElementById('ecOverlay').classList.remove('show'); editingId = null; }
+  function closeModal(){ document.getElementById('ecOverlay').classList.remove('show'); editingId = null; pendingFiles = []; }
 
   function saveRecord(){
     const title = document.getElementById('ec_title').value.trim();
@@ -2470,6 +2881,7 @@
     c.effectiveDate = document.getElementById('ec_effectiveDate').value;
     c.transition = document.getElementById('ec_transition').value;
     c.implementationNotes = document.getElementById('ec_implementationNotes').value.trim();
+    c.attachments = pendingFiles.slice();
 
     const caId = document.getElementById('ec_linkedCA').value;
     if(caId){
@@ -2501,7 +2913,11 @@
     c.lastUpdatedBy = 'Matt Crandall';
     c.lastUpdated = todayStr();
 
-    save();
+    if(!save()){
+      load();
+      alert("Couldn't save \u2014 this browser's local storage for the dashboard is full (usually from file attachments piling up across records over time). Try removing this attachment or using a smaller file, or open an older record and remove one of its attachments to free up space, then save again.");
+      return;
+    }
     closeModal();
     renderAll();
   }
@@ -2630,10 +3046,12 @@
     const openCA = ca.filter(r => r.status !== 'Closed').length;
     const pendingDocs = dc.filter(d => d.status === 'Pending Approval').length;
     const activeEC = ec.filter(c => ['Draft','Pending Approval','Approved'].indexOf(c.status) !== -1).length;
+    const cal = readList('cal_dashboard_v1');
     const overdueAll =
       ca.filter(r => r.status !== 'Closed' && r.dueDate && r.dueDate < today).length +
       dc.filter(d => d.status === 'Pending Approval' && d.dueDate && d.dueDate < today).length +
-      ec.filter(c => c.status === 'Pending Approval' && c.dueDate && c.dueDate < today).length;
+      ec.filter(c => c.status === 'Pending Approval' && c.dueDate && c.dueDate < today).length +
+      cal.filter(e => e.status !== 'Out of Service' && e.nextDueDate && e.nextDueDate < today).length;
 
     const elCA = document.getElementById('dashOpenCA');
     if(!elCA) return; // dashboard markup not present (shouldn't happen, but stay safe)
@@ -2677,6 +3095,528 @@
 
   renderDashboard();
   console.log('Dashboard overview loaded');
+})();
+</script>
+
+<script>
+(function(){
+  const STORE_KEY = 'cal_dashboard_v1';
+  const SEED_FLAG = 'cal_dashboard_seeded_v1';
+  let equipment = [];
+  let editingId = null;
+  let cardFilter = null;
+  let openDetailId = null;
+  let newCalMode = false;
+  let pendingFile = null;
+
+  const ICONS = {
+    shieldcheck: '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6l8-4z"/><path d="M9 12l2 2 4-4"/>',
+    approve: '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6l8-4z"/><path d="M9 12l2 2 4-4"/>',
+    alert: '<path d="M12 2L1 21h22L12 2z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r="0.6" fill="currentColor"/>',
+    upload: '<path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/>',
+    x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+    file: '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>'
+  };
+  function svg(name, cls){ return '<svg class="'+(cls||'')+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+ICONS[name]+'</svg>'; }
+
+  const STEPS = [
+    {label:'Schedule', icon:'upload', color:'#1f5c99'},
+    {label:'Calibrate', icon:'alert', color:'#b5720a'},
+    {label:'Certify', icon:'approve', color:'#1a8754'},
+    {label:'Track', icon:'shieldcheck', color:'#7c4fd1'}
+  ];
+  function renderSteps(){
+    document.getElementById('calStepsRow').innerHTML = STEPS.map(s => `
+      <div class="step">
+        <div class="circ" style="background:${s.color}">${svg(s.icon)}</div>
+        <span>${s.label}</span>
+      </div>`).join('');
+  }
+
+  function uid(){ return 'EQ-' + new Date().getFullYear() + '-' + String(Date.now()).slice(-4); }
+  function todayStr(){ return new Date().toISOString().slice(0,10); }
+  function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function initials(name){
+    if(!name) return '—';
+    const parts = name.trim().split(/\s+/);
+    return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+  }
+  function avatarColor(name){
+    const colors = ['#1f5c99','#1a8754','#b5720a','#7c4fd1','#d1453d','#0f8b8d'];
+    let h = 0; for(const c of (name||'')) h = (h + c.charCodeAt(0)) % colors.length;
+    return colors[h];
+  }
+  function fmtBytes(n){
+    if(!n) return '';
+    if(n < 1024) return n + ' B';
+    if(n < 1024*1024) return (n/1024).toFixed(1) + ' KB';
+    return (n/1024/1024).toFixed(1) + ' MB';
+  }
+  function addDays(n){ const d = new Date(); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
+  function addMonths(dateStr, months){
+    const d = dateStr ? new Date(dateStr) : new Date();
+    d.setMonth(d.getMonth() + Number(months||0));
+    return d.toISOString().slice(0,10);
+  }
+
+  function load(){
+    try { equipment = JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); } catch(e){ equipment = []; }
+    if(!localStorage.getItem(SEED_FLAG) && equipment.length === 0){
+      equipment = seedData();
+      save();
+      localStorage.setItem(SEED_FLAG, '1');
+    }
+  }
+  function save(){
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(equipment));
+      if(window.__qmsRenderNotifications) window.__qmsRenderNotifications();
+      return true;
+    } catch(e) {
+      console.error('Equipment Calibration save failed:', e);
+      return false;
+    }
+  }
+
+  function seedData(){
+    return [
+      {
+        id: 'EQ-2024-201', example: true, assetTag: 'TM-014', name: "25' Tape Measure",
+        category: 'Tape Measure', department: 'Shipping/Logistics', owner: 'Rosa Kim',
+        calType: 'Internal', vendor: '', intervalMonths: 12,
+        lastCalibratedDate: addDays(-340), nextDueDate: addDays(20),
+        status: 'In Service', lastResult: 'Pass',
+        notes: 'Used for finished-goods dimensional checks before shipment.',
+        history: [
+          {date: addDays(-340), result:'Pass', performedBy:'Rosa Kim', vendor:'', fileName:'TM-014_cal_2025.pdf', fileDataUrl:'', fileSize:0, notes:'Within tolerance.'}
+        ],
+        lastUpdatedBy: 'Rosa Kim', lastUpdated: addDays(-340)
+      },
+      {
+        id: 'EQ-2024-190', example: true, assetTag: 'CAL-008', name: 'Digital Caliper',
+        category: 'Caliper', department: 'Quality', owner: 'Chad Wittkopp',
+        calType: 'Internal', vendor: '', intervalMonths: 12,
+        lastCalibratedDate: addDays(-400), nextDueDate: addDays(-35),
+        status: 'In Service', lastResult: 'Pass',
+        notes: 'Primary caliper for incoming inspection.',
+        history: [
+          {date: addDays(-400), result:'Pass', performedBy:'Chad Wittkopp', vendor:'', fileName:'CAL-008_cal_2025.pdf', fileDataUrl:'', fileSize:0, notes:''}
+        ],
+        lastUpdatedBy: 'Chad Wittkopp', lastUpdated: addDays(-400)
+      },
+      {
+        id: 'EQ-2024-175', example: true, assetTag: 'TW-003', name: 'Torque Wrench',
+        category: 'Torque Wrench', department: 'Maintenance', owner: 'Rosa Kim',
+        calType: 'External', vendor: 'Zoro Precision Cal Services', intervalMonths: 12,
+        lastCalibratedDate: addDays(-370), nextDueDate: addDays(-5),
+        status: 'Out for Calibration', lastResult: 'Adjusted',
+        notes: 'Used per WI-022 (Torque Wrench Calibration Work Instruction) on Line 3.',
+        history: [
+          {date: addDays(-370), result:'Adjusted', performedBy:'Zoro Precision Cal Services', vendor:'Zoro Precision Cal Services', fileName:'TW-003_cal_cert_2025.pdf', fileDataUrl:'', fileSize:0, notes:'Slight drift corrected; passed after adjustment.'}
+        ],
+        lastUpdatedBy: 'Matt Crandall', lastUpdated: addDays(-5)
+      }
+    ];
+  }
+
+  function isOverdue(e){ return e.status !== 'Out of Service' && e.nextDueDate && e.nextDueDate < todayStr(); }
+  function isDueSoon(e){ return e.status === 'In Service' && !isOverdue(e) && e.nextDueDate && e.nextDueDate <= addDays(30); }
+  function statusClass(s){ return 'cal-' + String(s).replace(/\s+/g,'-'); }
+  function latestHistory(e){ return (e.history && e.history.length) ? e.history[e.history.length-1] : null; }
+  function fileChipHtml(entry){
+    if(entry && entry.fileDataUrl){
+      return `<a class="file-chip" href="${entry.fileDataUrl}" download="${escapeHtml(entry.fileName)}">${svg('file')}${escapeHtml(entry.fileName)}${entry.fileSize?(' · '+fmtBytes(entry.fileSize)):''}</a>`;
+    }
+    return entry && entry.fileName ? `<span class="file-chip">${svg('file')}${escapeHtml(entry.fileName)}</span>` : '<span class="hint" style="margin:0;">No certificate on file.</span>';
+  }
+
+  function populateDeptFilter(){
+    const depts = Array.from(new Set(equipment.map(e=>e.department).filter(Boolean))).sort();
+    const sel = document.getElementById('calFilterDept');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">All departments</option>' + depts.map(dp=>`<option>${escapeHtml(dp)}</option>`).join('');
+    sel.value = cur;
+  }
+
+  function renderCards(){
+    const counts = {
+      total: equipment.length,
+      'In Service': equipment.filter(e=>e.status==='In Service' && !isOverdue(e) && !isDueSoon(e)).length,
+      dueSoon: equipment.filter(isDueSoon).length,
+      'Out for Calibration': equipment.filter(e=>e.status==='Out for Calibration').length,
+      'Out of Service': equipment.filter(e=>e.status==='Out of Service').length,
+      overdue: equipment.filter(isOverdue).length
+    };
+    const defs = [
+      {key:'total', num:counts.total, lbl:'Total Equipment', icon:'shieldcheck', bg:'#e7f0f9', color:'#1f5c99'},
+      {key:'In Service', num:counts['In Service'], lbl:'In Service', icon:'approve', bg:'#e6f6ee', color:'#1a8754'},
+      {key:'dueSoon', num:counts.dueSoon, lbl:'Due Soon', icon:'alert', bg:'#fdf1de', color:'#b5720a'},
+      {key:'Out for Calibration', num:counts['Out for Calibration'], lbl:'Out for Calibration', icon:'upload', bg:'#f1eafc', color:'#7c4fd1'},
+      {key:'Out of Service', num:counts['Out of Service'], lbl:'Out of Service', icon:'x', bg:'#eef1f5', color:'#5b6675'},
+      {key:'overdue', num:counts.overdue, lbl:'Overdue', icon:'alert', bg:'#fdeceb', color:'#d1453d'},
+    ];
+    document.getElementById('calCards').innerHTML = defs.map(c => `
+      <div class="card ${cardFilter===c.key?'active':''}" data-key="${c.key}">
+        <div class="top-row">
+          <div class="ic" style="background:${c.bg};color:${c.color}">${svg(c.icon)}</div>
+        </div>
+        <div class="num" style="color:${c.key==='overdue'?'var(--red)':'var(--ink)'}">${c.num}</div>
+        <div class="lbl">${c.lbl}</div>
+      </div>`).join('');
+    document.getElementById('calOverdueCount').textContent = counts.overdue;
+
+    document.querySelectorAll('#calCards .card').forEach(el => {
+      el.addEventListener('click', () => {
+        const key = el.getAttribute('data-key');
+        cardFilter = (cardFilter === key) ? null : key;
+        renderAll();
+      });
+    });
+  }
+
+  function currentFiltered(){
+    const q = document.getElementById('calSearch').value.trim().toLowerCase();
+    const st = document.getElementById('calFilterStatus').value;
+    const cat = document.getElementById('calFilterCategory').value;
+    const dep = document.getElementById('calFilterDept').value;
+
+    return equipment.filter(e => {
+      if(cardFilter){
+        if(cardFilter === 'overdue' && !isOverdue(e)) return false;
+        if(cardFilter === 'dueSoon' && !isDueSoon(e)) return false;
+        if(cardFilter === 'total'){ /* no-op */ }
+        else if(['total','overdue','dueSoon'].indexOf(cardFilter) === -1 && e.status !== cardFilter) return false;
+      }
+      if(st && e.status !== st) return false;
+      if(cat && e.category !== cat) return false;
+      if(dep && e.department !== dep) return false;
+      if(q){
+        const hay = [e.id, e.assetTag, e.name, e.owner, e.vendor, e.department].join(' ').toLowerCase();
+        if(!hay.includes(q)) return false;
+      }
+      return true;
+    }).sort((a,b) => String(a.nextDueDate||'9999').localeCompare(String(b.nextDueDate||'9999')));
+  }
+
+  function renderTable(){
+    const list = currentFiltered();
+    const tbody = document.getElementById('calTbody');
+    if(list.length === 0){
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="8">No equipment matches. Try clearing filters.</td></tr>';
+      return;
+    }
+    let html = '';
+    list.forEach(e => {
+      const overdue = isOverdue(e);
+      html += `
+      <tr class="rec-row" data-id="${escapeHtml(e.id)}">
+        <td class="caid">${escapeHtml(e.assetTag||e.id)}${e.example?'<span class="example-tag">EXAMPLE</span>':''}</td>
+        <td class="title-cell"><div class="t">${escapeHtml(e.name)}</div><div class="s">${escapeHtml(e.category||'')}</div></td>
+        <td>${escapeHtml(e.department||'—')}</td>
+        <td>${escapeHtml(e.calType||'—')}${e.calType==='External' && e.vendor ? ('<div class="s">'+escapeHtml(e.vendor)+'</div>') : ''}</td>
+        <td><span class="badge ${statusClass(e.status)}">${e.status}</span></td>
+        <td class="${overdue?'overdue-flag':''}">${e.nextDueDate||'—'}</td>
+        <td><div class="avatar" style="background:${avatarColor(e.owner)};width:28px;height:28px;font-size:11px;" title="${escapeHtml(e.owner||'')}">${initials(e.owner)}</div></td>
+        <td><button class="menu-btn" data-edit="${escapeHtml(e.id)}">⋮</button></td>
+      </tr>`;
+      if(openDetailId === e.id){
+        html += renderDetailRow(e);
+      }
+    });
+    tbody.innerHTML = html;
+
+    tbody.querySelectorAll('tr.rec-row').forEach(tr => {
+      tr.addEventListener('click', (e) => {
+        if(e.target.closest('.menu-btn')) return;
+        const id = tr.getAttribute('data-id');
+        openDetailId = (openDetailId === id) ? null : id;
+        renderTable();
+      });
+    });
+    tbody.querySelectorAll('[data-edit]').forEach(btn => {
+      btn.addEventListener('click', (e) => { e.stopPropagation(); openModal(btn.getAttribute('data-edit')); });
+    });
+    tbody.querySelectorAll('[data-logcal]').forEach(btn => {
+      btn.addEventListener('click', (e) => { e.stopPropagation(); openModal(btn.getAttribute('data-logcal'), 'cal-log', true); });
+    });
+  }
+
+  function renderDetailRow(e){
+    const histLog = (e.history||[]).slice().reverse().map(h => `
+      <div class="rev-log-item">
+        <div class="rl-top">
+          <span class="rl-rev">${h.date||''}</span>
+          <span class="badge ${h.result==='Fail'?'cal-Out-of-Service':(h.result==='Adjusted'?'cal-Out-for-Calibration':'cal-In-Service')}">${escapeHtml(h.result||'')}</span>
+        </div>
+        <div class="rl-meta">${h.performedBy?escapeHtml(h.performedBy):''}${h.vendor && h.vendor!==h.performedBy?(' — '+escapeHtml(h.vendor)):''}</div>
+        <div class="rl-notes">${escapeHtml(h.notes||'')}</div>
+        <div style="margin-top:6px;">${fileChipHtml(h)}</div>
+      </div>`).join('') || '<div class="hint" style="margin:0;">No calibration history yet.</div>';
+
+    const latest = latestHistory(e);
+
+    return `<tr class="detail-row"><td colspan="8">
+      <div class="detail-wrap">
+        <div class="detail-col">
+          <h5>Overview</h5>
+          <div class="kv"><b>Asset tag</b>${escapeHtml(e.assetTag||'—')}</div>
+          <div class="kv"><b>Category</b>${escapeHtml(e.category||'—')}</div>
+          <div class="kv"><b>Department</b>${escapeHtml(e.department||'—')}</div>
+          <div class="kv"><b>Owner</b>${escapeHtml(e.owner||'—')}</div>
+          <div class="kv"><b>Notes</b><div class="desc-box">${escapeHtml(e.notes||'—')}</div></div>
+        </div>
+        <div class="detail-col">
+          <h5>Calibration Schedule</h5>
+          <div class="kv"><b>Type</b>${escapeHtml(e.calType||'—')}</div>
+          ${e.calType==='External' ? `<div class="kv"><b>Vendor</b>${escapeHtml(e.vendor||'—')}</div>` : ''}
+          <div class="kv"><b>Interval</b>${e.intervalMonths ? (e.intervalMonths + ' month(s)') : '—'}</div>
+          <div class="kv"><b>Last calibrated</b>${escapeHtml(e.lastCalibratedDate||'—')}</div>
+          <div class="kv"><b>Next due</b>${escapeHtml(e.nextDueDate||'—')}</div>
+          <div class="kv"><b>Status</b><span class="badge ${statusClass(e.status)}">${e.status}</span></div>
+          <div class="kv"><b>Latest certificate</b><div style="margin-top:4px;">${fileChipHtml(latest)}</div></div>
+          <button class="btn btn-primary btn-sm" data-logcal="${escapeHtml(e.id)}" style="margin-top:10px;">Log Calibration</button>
+        </div>
+        <div class="detail-col">
+          <h5>Calibration History</h5>
+          ${histLog}
+        </div>
+      </div>
+      <div class="detail-foot">
+        <div class="left">
+          <span>Last updated: ${e.lastUpdated||'—'} ${e.lastUpdatedBy?('by '+escapeHtml(e.lastUpdatedBy)):''}</span>
+        </div>
+        <button class="btn btn-ghost btn-sm" data-edit="${escapeHtml(e.id)}">Edit full record</button>
+      </div>
+    </td></tr>`;
+  }
+
+  function renderAll(){
+    populateDeptFilter();
+    renderCards();
+    renderTable();
+  }
+
+  // ---- Modal ----
+  function switchTab(name){
+    document.querySelectorAll('#calTabs .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab===name));
+    document.querySelectorAll('#calOverlay .tab-panel').forEach(p => p.classList.toggle('active', p.dataset.panel===name));
+  }
+  document.getElementById('calTabs').addEventListener('click', (e) => {
+    const btn = e.target.closest('.tab-btn');
+    if(btn) switchTab(btn.dataset.tab);
+  });
+
+  function renderFileChipEditor(){
+    const wrap = document.getElementById('cal_fileChipWrap');
+    if(pendingFile && pendingFile.fileName){
+      wrap.innerHTML = `<span class="file-chip">${svg('file')}${escapeHtml(pendingFile.fileName)}${pendingFile.fileSize?(' · '+fmtBytes(pendingFile.fileSize)):''}<span class="rm" id="cal_removeFile">${svg('x')}</span></span>`;
+      const rm = document.getElementById('cal_removeFile');
+      if(rm) rm.addEventListener('click', () => {
+        pendingFile = null;
+        document.getElementById('cal_fileInput').value = '';
+        renderFileChipEditor();
+      });
+    } else {
+      wrap.innerHTML = '';
+    }
+  }
+  document.getElementById('cal_fileInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    document.getElementById('cal_fileChipWrap').innerHTML = '<span class="hint" style="margin:0;">Compressing image\u2026</span>';
+    window.__qmsCompressImage(file).then((info) => {
+      if(info) pendingFile = info;
+      renderFileChipEditor();
+    });
+  });
+
+  function openModal(id, focusTab, isNewCal){
+    editingId = id || null;
+    newCalMode = !!isNewCal;
+    pendingFile = null;
+    const e = id ? equipment.find(x=>x.id===id) : null;
+
+    document.getElementById('calModalTitle').textContent = e
+      ? (newCalMode ? ('Log Calibration — ' + (e.assetTag||e.id)) : ('Edit ' + (e.assetTag||e.id) + (e.example?' (example)':'')))
+      : 'Add Equipment';
+    switchTab(focusTab || 'cal-overview');
+
+    document.getElementById('cal_assetTag').value = e ? e.assetTag : '';
+    document.getElementById('cal_name').value = e ? e.name : '';
+    document.getElementById('cal_category').value = e ? e.category : 'Tape Measure';
+    document.getElementById('cal_department').value = e ? e.department : 'Operations';
+    document.getElementById('cal_owner').value = e ? e.owner : '';
+    document.getElementById('cal_notes').value = e ? e.notes : '';
+
+    document.getElementById('cal_calType').value = e ? e.calType : 'Internal';
+    document.getElementById('cal_vendor').value = e ? (e.vendor||'') : '';
+    document.getElementById('cal_interval').value = e ? String(e.intervalMonths||12) : '12';
+    document.getElementById('cal_nextDueDate').value = e ? (e.nextDueDate||'') : '';
+    document.getElementById('cal_status').value = e ? e.status : 'In Service';
+
+    document.getElementById('cal_logDate').value = newCalMode ? todayStr() : '';
+    document.getElementById('cal_logResult').value = 'Pass';
+    document.getElementById('cal_logPerformedBy').value = e ? (e.calType==='External' ? (e.vendor||'') : (e.owner||'')) : '';
+    document.getElementById('cal_logNotes').value = '';
+    document.getElementById('cal_fileInput').value = '';
+    renderFileChipEditor();
+
+    const hist = (e && e.history) ? e.history.slice().reverse() : [];
+    document.getElementById('cal_historyList').innerHTML = hist.length
+      ? '<div class="hint">Previous entries:</div>' + hist.map(h => `
+          <div class="rev-log-item">
+            <div class="rl-top"><span class="rl-rev">${h.date||''}</span><span class="badge ${h.result==='Fail'?'cal-Out-of-Service':(h.result==='Adjusted'?'cal-Out-for-Calibration':'cal-In-Service')}">${escapeHtml(h.result||'')}</span></div>
+            <div class="rl-meta">${escapeHtml(h.performedBy||'')}</div>
+            <div class="rl-notes">${escapeHtml(h.notes||'')}</div>
+          </div>`).join('')
+      : '';
+
+    document.getElementById('calDeleteBtn').style.display = (e && !newCalMode) ? 'inline-flex' : 'none';
+    document.getElementById('calOverlay').classList.add('show');
+  }
+  function closeModal(){ document.getElementById('calOverlay').classList.remove('show'); editingId = null; newCalMode = false; pendingFile = null; }
+
+  function saveRecord(){
+    const name = document.getElementById('cal_name').value.trim();
+    const assetTag = document.getElementById('cal_assetTag').value.trim();
+    if(!name){ alert('Please give this equipment a description before saving.'); return; }
+
+    let e;
+    const isNew = !editingId;
+    if(editingId){ e = equipment.find(x=>x.id===editingId); }
+    else { e = { id: uid(), example: false, history: [] }; equipment.push(e); }
+
+    e.assetTag = assetTag;
+    e.name = name;
+    e.category = document.getElementById('cal_category').value;
+    e.department = document.getElementById('cal_department').value;
+    e.owner = document.getElementById('cal_owner').value.trim();
+    e.notes = document.getElementById('cal_notes').value.trim();
+
+    e.calType = document.getElementById('cal_calType').value;
+    e.vendor = document.getElementById('cal_vendor').value.trim();
+    e.intervalMonths = Number(document.getElementById('cal_interval').value) || 0;
+    const manualNextDue = document.getElementById('cal_nextDueDate').value;
+    e.status = document.getElementById('cal_status').value;
+
+    if(isNew || newCalMode){
+      const logDate = document.getElementById('cal_logDate').value || todayStr();
+      const logResult = document.getElementById('cal_logResult').value;
+      const logPerformedBy = document.getElementById('cal_logPerformedBy').value.trim();
+      const logNotes = document.getElementById('cal_logNotes').value.trim();
+      const fileInfo = pendingFile ? {fileName: pendingFile.fileName, fileDataUrl: pendingFile.fileDataUrl, fileSize: pendingFile.fileSize} : {fileName:'', fileDataUrl:'', fileSize:0};
+
+      // Only record a calibration entry if this was explicitly a "Log Calibration"
+      // action, or brand-new equipment where a log date was actually provided.
+      if(newCalMode || (isNew && document.getElementById('cal_logDate').value)){
+        e.history.push({
+          date: logDate, result: logResult, performedBy: logPerformedBy,
+          vendor: e.calType === 'External' ? (logPerformedBy || e.vendor) : '',
+          fileName: fileInfo.fileName, fileDataUrl: fileInfo.fileDataUrl, fileSize: fileInfo.fileSize,
+          notes: logNotes
+        });
+        e.lastCalibratedDate = logDate;
+        e.lastResult = logResult;
+        // Logging a calibration always recalculates the schedule from the new
+        // date + interval — the "Next due date" field on the Schedule tab is
+        // pre-filled with the prior value for display, so it must NOT be
+        // treated as a manual override here or the due date would never move.
+        e.nextDueDate = e.intervalMonths ? addMonths(logDate, e.intervalMonths) : (manualNextDue || e.nextDueDate);
+      } else {
+        e.nextDueDate = manualNextDue || e.nextDueDate;
+      }
+    } else {
+      e.nextDueDate = manualNextDue || (e.lastCalibratedDate && e.intervalMonths ? addMonths(e.lastCalibratedDate, e.intervalMonths) : e.nextDueDate);
+    }
+
+    e.lastUpdatedBy = 'Matt Crandall';
+    e.lastUpdated = todayStr();
+
+    if(!save()){
+      load();
+      alert("Couldn't save \u2014 this browser's local storage for the dashboard is full (usually from file attachments piling up across records over time). Try removing this attachment or using a smaller file, or open an older record and remove one of its attachments to free up space, then save again.");
+      return;
+    }
+    closeModal();
+    renderAll();
+  }
+
+  function deleteRecord(){
+    if(!editingId) return;
+    if(!confirm('Delete this equipment record? This cannot be undone.')) return;
+    equipment = equipment.filter(e => e.id !== editingId);
+    save();
+    closeModal();
+    openDetailId = null;
+    renderAll();
+  }
+
+  function exportCsv(){
+    const cols = ['id','assetTag','name','category','department','owner','calType','vendor','intervalMonths','lastCalibratedDate','nextDueDate','status','lastResult'];
+    const lines = [cols.join(',')];
+    equipment.forEach(e => {
+      lines.push(cols.map(c => '"' + String(e[c] ?? '').replace(/"/g,'""') + '"').join(','));
+    });
+    const blob = new Blob([lines.join('\n')], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'equipment-calibration-register-' + todayStr() + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  // ---- Notifications (plugs into the shared header bell + Dashboard feed) ----
+  function computeCalNotifications(){
+    const items = [];
+    equipment.forEach(e => {
+      if(isOverdue(e)){
+        items.push({type:'overdue', urgent:true, date:e.nextDueDate, docId:e.id,
+          text:`<b>${escapeHtml(e.assetTag||e.id)}</b> (${escapeHtml(e.name)}) is overdue for calibration (due ${e.nextDueDate})`});
+      } else if(isDueSoon(e)){
+        items.push({type:'pending', urgent:true, date:e.nextDueDate, docId:e.id,
+          text:`<b>${escapeHtml(e.assetTag||e.id)}</b> (${escapeHtml(e.name)}) is due for calibration soon (due ${e.nextDueDate})`});
+      } else if(e.lastCalibratedDate && e.lastCalibratedDate >= addDays(-7)){
+        items.push({type:'approved', urgent:false, date:e.lastCalibratedDate, docId:e.id,
+          text:`<b>${escapeHtml(e.assetTag||e.id)}</b> (${escapeHtml(e.name)}) was calibrated (${e.lastResult||'result recorded'})`});
+      }
+    });
+    return items.map(i => Object.assign({view:'cal'}, i));
+  }
+  window.__qmsNotifProviders = window.__qmsNotifProviders || [];
+  window.__qmsNotifProviders.push(computeCalNotifications);
+  window.__qmsOpenDetail = window.__qmsOpenDetail || {};
+  window.__qmsOpenDetail.cal = function(id){
+    openDetailId = id;
+    cardFilter = null;
+    document.getElementById('calSearch').value = '';
+    document.getElementById('calFilterStatus').value = '';
+    document.getElementById('calFilterCategory').value = '';
+    document.getElementById('calFilterDept').value = '';
+    renderAll();
+  };
+
+  // Events
+  document.getElementById('calNewBtn').addEventListener('click', () => openModal(null));
+  document.getElementById('calQaNew').addEventListener('click', () => openModal(null));
+  document.getElementById('calQaDueSoon').addEventListener('click', () => { cardFilter = 'dueSoon'; renderAll(); });
+  document.getElementById('calQaOverdue').addEventListener('click', () => { cardFilter = 'overdue'; renderAll(); });
+  document.getElementById('calQaExport').addEventListener('click', exportCsv);
+  document.getElementById('calExportBtn').addEventListener('click', exportCsv);
+  document.getElementById('calCloseModal').addEventListener('click', closeModal);
+  document.getElementById('calCancelBtn').addEventListener('click', closeModal);
+  document.getElementById('calSaveBtn').addEventListener('click', saveRecord);
+  document.getElementById('calDeleteBtn').addEventListener('click', deleteRecord);
+  document.getElementById('calOverlay').addEventListener('click', (e) => { if(e.target.id==='calOverlay') closeModal(); });
+  ['calSearch','calFilterStatus','calFilterCategory','calFilterDept'].forEach(id => {
+    document.getElementById(id).addEventListener('input', renderTable);
+    document.getElementById(id).addEventListener('change', renderTable);
+  });
+
+  renderSteps();
+  load();
+  renderAll();
+  if(window.__qmsRenderNotifications) window.__qmsRenderNotifications();
+  console.log('Equipment Calibration loaded with', equipment.length, 'records');
 })();
 </script>
 
